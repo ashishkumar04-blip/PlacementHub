@@ -1,134 +1,118 @@
 import React, { useState } from 'react';
+import { PlacementProvider, usePlacement } from './context/PlacementContext';
+import { DemoRoleBar } from './components/common/DemoRoleBar';
 import { Navbar } from './components/layout/Navbar';
-import { Hero } from './components/hero/Hero';
-import { ProjectsSection } from './components/projects/ProjectsSection';
-import { AudioDspWorkbench } from './components/playground/AudioDspWorkbench';
-import { SkillsMatrix } from './components/skills/SkillsMatrix';
-import { WritingSection } from './components/writing/WritingSection';
-import { ExperienceTimeline } from './components/experience/ExperienceTimeline';
-import { ContactSection } from './components/contact/ContactSection';
-import { Footer } from './components/layout/Footer';
-import { SystemBar } from './components/layout/SystemBar';
-import { CommandPalette } from './components/command-palette/CommandPalette';
-import { ResumeModal } from './components/resume/ResumeModal';
-import { useAudioSynth } from './hooks/useAudioSynth';
-import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
+import { Sidebar } from './components/layout/Sidebar';
+import { LandingPage } from './pages/LandingPage';
+import { AuthPage } from './pages/AuthPage';
+import { StudentDashboard } from './pages/StudentDashboard';
+import { CompanyHub } from './pages/CompanyHub';
+import { InterviewExperienceModal } from './pages/InterviewExperienceModal';
+import { MentorDirectory } from './pages/MentorDirectory';
+import { PreparationTracker } from './pages/PreparationTracker';
+import { ApplicationTracker } from './pages/ApplicationTracker';
+import { ResourceLibrary } from './pages/ResourceLibrary';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { MentorDashboard } from './pages/MentorDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 
-export function App() {
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [resumeModalOpen, setResumeModalOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-
+const MainLayout: React.FC = () => {
   const {
-    isPlaying,
-    waveform,
-    frequency,
-    detune,
-    gain,
-    analyserNode,
-    audioFeedbackEnabled,
-    setAudioFeedbackEnabled,
-    toggleSynth,
-    setWaveform,
-    setFrequency,
-    setDetune,
-    setGain,
-    playClickFeedback,
-  } = useAudioSynth();
+    activePage,
+    setActivePage,
+    selectedExperience,
+    setSelectedExperience,
+    switchRole
+  } = usePlacement();
 
-  // Global hotkeys
-  useKeyboardShortcut('cmd+k', () => {
-    setCommandPaletteOpen((prev) => !prev);
-  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const handleSelectProject = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    const el = document.getElementById('projects');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+  // If on Landing Page or Auth Page, show simplified layout without sidebar
+  if (activePage === 'landing') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <DemoRoleBar />
+        <LandingPage />
+        {selectedExperience && (
+          <InterviewExperienceModal
+            experience={selectedExperience}
+            onClose={() => setSelectedExperience(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (activePage === 'auth') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <DemoRoleBar />
+        <AuthPage />
+      </div>
+    );
+  }
+
+  // Handle direct Ask Mentor action from modal
+  const handleAskMentorFromModal = (mentorId: string, mentorName: string, company: string) => {
+    setActivePage('mentor-directory');
   };
 
   return (
-    <div className="relative min-h-screen bg-background text-zinc-100 bg-grid-pattern selection:bg-cyan-500/20 selection:text-cyan-200">
-      
-      {/* Top Sticky Navigation */}
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+      {/* Sticky Top Presentation Bar */}
+      <DemoRoleBar />
+
+      {/* Main SaaS Navbar */}
       <Navbar
-        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        onOpenResumeModal={() => setResumeModalOpen(true)}
-        audioFeedbackEnabled={audioFeedbackEnabled}
-        onToggleAudioFeedback={() => setAudioFeedbackEnabled((prev) => !prev)}
-        playClickFeedback={playClickFeedback}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
       />
 
-      {/* Main Content Sections */}
-      <main className="relative z-10">
-        <Hero
-          playClickFeedback={playClickFeedback}
-          onSelectProject={handleSelectProject}
-          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+      {/* Body with Sidebar & Content */}
+      <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
+        <Sidebar
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
         />
 
-        <ProjectsSection
-          playClickFeedback={playClickFeedback}
-          selectedProjectId={selectedProjectId}
-          onClearSelectedProject={() => setSelectedProjectId(null)}
+        <main className="flex-1 min-w-0 overflow-y-auto">
+          {activePage === 'student-dashboard' && <StudentDashboard />}
+          {activePage === 'company-hub' && (
+            <CompanyHub
+              onOpenSubmitModal={() => {
+                switchRole('mentor');
+                setActivePage('mentor-dashboard');
+              }}
+              onAskMentor={handleAskMentorFromModal}
+            />
+          )}
+          {activePage === 'mentor-directory' && <MentorDirectory />}
+          {activePage === 'my-prep' && <PreparationTracker />}
+          {activePage === 'application-tracker' && <ApplicationTracker />}
+          {activePage === 'resources' && <ResourceLibrary />}
+          {activePage === 'analytics' && <AnalyticsDashboard />}
+          {activePage === 'mentor-dashboard' && <MentorDashboard />}
+          {activePage === 'admin-dashboard' && <AdminDashboard />}
+        </main>
+      </div>
+
+      {/* Global Interview Experience Modal */}
+      {selectedExperience && (
+        <InterviewExperienceModal
+          experience={selectedExperience}
+          onClose={() => setSelectedExperience(null)}
+          onAskMentor={handleAskMentorFromModal}
         />
-
-        <AudioDspWorkbench
-          isPlaying={isPlaying}
-          waveform={waveform}
-          frequency={frequency}
-          detune={detune}
-          gain={gain}
-          analyserNode={analyserNode}
-          onToggleSynth={toggleSynth}
-          onWaveformChange={setWaveform}
-          onFrequencyChange={setFrequency}
-          onDetuneChange={setDetune}
-          onGainChange={setGain}
-          playClickFeedback={playClickFeedback}
-        />
-
-        <SkillsMatrix playClickFeedback={playClickFeedback} />
-
-        <WritingSection playClickFeedback={playClickFeedback} />
-
-        <ExperienceTimeline playClickFeedback={playClickFeedback} />
-
-        <ContactSection playClickFeedback={playClickFeedback} />
-      </main>
-
-      {/* Footer */}
-      <Footer playClickFeedback={playClickFeedback} />
-
-      {/* Floating Telemetry System Bar */}
-      <SystemBar
-        audioFeedbackEnabled={audioFeedbackEnabled}
-        onToggleAudioFeedback={() => setAudioFeedbackEnabled((prev) => !prev)}
-        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        playClickFeedback={playClickFeedback}
-      />
-
-      {/* Command Palette (Cmd + K) */}
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onSelectProject={handleSelectProject}
-        onOpenResumeModal={() => setResumeModalOpen(true)}
-        audioFeedbackEnabled={audioFeedbackEnabled}
-        onToggleAudioFeedback={() => setAudioFeedbackEnabled((prev) => !prev)}
-        playClickFeedback={playClickFeedback}
-      />
-
-      {/* Curriculum Vitae Modal */}
-      <ResumeModal
-        isOpen={resumeModalOpen}
-        onClose={() => setResumeModalOpen(false)}
-        playClickFeedback={playClickFeedback}
-      />
-
+      )}
     </div>
+  );
+};
+
+export function App() {
+  return (
+    <PlacementProvider>
+      <MainLayout />
+    </PlacementProvider>
   );
 }
 
